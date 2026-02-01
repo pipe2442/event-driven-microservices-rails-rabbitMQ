@@ -8,13 +8,13 @@ class Api::OrdersController < ApplicationController
   end
 
   def create
-    @order = Order.new(order_params)
+    result = Orders::Create.new(order_params).call
 
-    if @order.save
-      Events::RabbitmqPublisher.new.publish_order_created(@order)
+    if result.order
+      @order = result.order
       render :show, status: :created
     else
-      render json: { errors: @order.errors.full_messages }, status: :unprocessable_entity
+      render json: { errors: result.errors }, status: :unprocessable_entity
     end
   end
 
@@ -28,13 +28,12 @@ class Api::OrdersController < ApplicationController
     @order = Order.find_by!(public_id: params[:id])
   end
 
-  def load_customer
-    public_id = (params[:order] && params[:order][:customer_public_id]) || @order&.customer_public_id
-    @customer = Customers::Client.fetch_customer(public_id) if public_id.present?
-  end
+def load_customer
+  public_id = action_name == "create" ? order_params[:customer_public_id] : @order&.customer_public_id
+  @customer = Customers::Client.new.fetch_customer(public_id) if public_id.present?
+end
 
   def order_params
-    params.require(:order)
-          .permit(:customer_public_id, :product_name, :quantity, :price, :delivery_address)
+    params.require(:order).permit(:customer_public_id, :product_name, :quantity, :price, :delivery_address)
   end
 end
