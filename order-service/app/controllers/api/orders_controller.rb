@@ -15,14 +15,34 @@ class Api::OrdersController < ApplicationController
     }
   end
 
-  def create
-    order = Order.new(order_params)
-    if order.save
-      render json: { id: order.public_id }, status: :created
-    else
-      render json: { errors: order.errors.full_messages }, status: :unprocessable_entity
-    end
+def create
+  customer = Customers::Client.fetch_customer(order_params[:customer_public_id])
+
+  unless customer
+    return render json: { error: "Customer not found" }, status: :unprocessable_entity
   end
+
+  order = Order.new(order_params)
+
+  if order.save
+    render json: {
+      id: order.public_id,
+      status: order.status,
+      product_name: order.product_name,
+      quantity: order.quantity,
+      price: order.price,
+      delivery_address: order.delivery_address,
+      customer: {
+        id: order.customer_public_id,
+        name: customer["customer_name"],
+        address: customer["address"],
+        orders_count: customer["orders_count"]
+      }
+    }, status: :created
+  else
+    render json: { errors: order.errors.full_messages }, status: :unprocessable_entity
+  end
+end
 
   def show
     order = Order.find_by(public_id: params[:id])
