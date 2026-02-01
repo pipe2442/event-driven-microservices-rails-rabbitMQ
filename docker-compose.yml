@@ -1,0 +1,58 @@
+version: "3.9"
+
+services:
+  postgres-order:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: order_service_development
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_order_data:/var/lib/postgresql/data
+
+  postgres-customer:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: customer_service_development
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_customer_data:/var/lib/postgresql/data
+
+  customer-service:
+    build: ./services/customer-service
+    ports:
+      - "3001:3001"
+    environment:
+      RAILS_ENV: development
+      DB_HOST: postgres-customer
+      DB_PORT: "5432"
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: customer_service_development
+    depends_on:
+      - postgres-customer
+
+  order-service:
+    build: ./services/order-service
+    ports:
+      - "3000:3000"
+    environment:
+      RAILS_ENV: development
+      DB_HOST: postgres-order
+      DB_PORT: "5432"
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: order_service_development
+      CUSTOMER_SERVICE_URL: http://customer-service:3001
+    depends_on:
+      - postgres-order
+      - customer-service
+
+volumes:
+  postgres_order_data:
+  postgres_customer_data:
