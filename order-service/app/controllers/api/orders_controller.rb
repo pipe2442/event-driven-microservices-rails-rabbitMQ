@@ -1,11 +1,21 @@
 class Api::OrdersController < ApplicationController
-    def index
-      orders = Order.all
-      render json: orders.as_json(only: [ :customer_public_id, :product_name, :quantity, :price, :created_at ], methods: [ :public_id ]), status: :ok
-    end
-  def create
-    order_params = params.require(:order).permit(:customer_public_id, :product_name, :quantity, :price)
+  def index
+    orders = Order.select(:public_id, :customer_public_id, :product_name, :quantity, :price, :delivery_address, :created_at, :updated_at)
+    render json: orders.map { |o|
+      {
+        id: o.public_id,
+        customer_public_id: o.customer_public_id,
+        product_name: o.product_name,
+        quantity: o.quantity,
+        price: o.price,
+        delivery_address: o.delivery_address,
+        created_at: o.created_at,
+        updated_at: o.updated_at
+      }
+    }
+  end
 
+  def create
     order = Order.new(order_params)
     if order.save
       render json: { id: order.public_id }, status: :created
@@ -26,6 +36,6 @@ class Api::OrdersController < ApplicationController
   private
 
   def order_params
-    params.require(:order).permit(:customer_public_id, :product_name, :quantity, :price)
+    params.require(:order).permit(:customer_public_id, :product_name, :quantity, :price, :delivery_address)
   end
 end
