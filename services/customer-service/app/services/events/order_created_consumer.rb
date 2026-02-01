@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 require "bunny"
 require "json"
 
@@ -9,24 +7,13 @@ module Events
     EXCHANGE_NAME = "orders.events"
     ROUTING_KEY = "order.created"
 
-    def initialize(url: ENV.fetch("RABBITMQ_URL", "amqp://guest:guest@localhost:5672"))
+    def initialize(url: ENV.fetch("RABBITMQ_URL", "amqp://guest:guest@localhost:5672"), customer_repo: Customer)
       @url = url
+      @customer_repo = customer_repo
     end
 
     def start
-      conn = nil
-
-      loop do
-        begin
-          conn = Bunny.new(@url)
-          conn.start
-          break
-        rescue Bunny::TCPConnectionFailed, Bunny::HostListDepleted
-          puts "[consumer] RabbitMQ not ready, retrying in 3s..."
-          sleep 3
-        end
-      end
-
+      conn = connect
       ch = conn.create_channel
       ch.prefetch(10)
 
@@ -47,12 +34,32 @@ module Events
 
     private
 
+    def connect
+      retries = 0
+      max_retries = ENV.fetch("RABBITMQ_MAX_RETRIES", "20").to_i
+
+      loop do
+        begin
+          conn = Bunny.new(@url)
+          conn.start
+          return conn
+        rescue Bunny::TCPConnectionFailed, Bunny::HostListDepleted
+          retries += 1
+          raise "RabbitMQ unavailable after #{max_retries} retries" if retries >= max_retries
+
+          sleep_time = [retries, 5].min
+          puts "[consumer] RabbitMQ not ready, retrying in #{sleep_time}s..."
+          sleep sleep_time
+        end
+      end
+    end
+
     def handle_message(body)
       msg = JSON.parse(body)
       customer_public_id = msg.dig("data", "customer_public_id")
       return if customer_public_id.nil?
 
-      customer = Customer.find_by(public_id: customer_public_id)
+      customer = @customer_repo.find_by(public_id: customer_public_id)
       return if customer.nil?
 
       customer.increment!(:orders_count)

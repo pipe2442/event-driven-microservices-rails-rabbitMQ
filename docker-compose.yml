@@ -76,6 +76,7 @@ services:
       DB_PASSWORD: postgres
       DB_NAME: customer_service_development
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      RABBITMQ_MAX_RETRIES: "20"
     depends_on:
       - customer-service
       - rabbitmq
