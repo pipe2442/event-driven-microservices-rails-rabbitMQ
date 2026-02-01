@@ -25,6 +25,8 @@ def create
   order = Order.new(order_params)
 
   if order.save
+    Events::RabbitmqPublisher.new.publish_order_created(order)
+
     render json: {
       id: order.public_id,
       status: order.status,

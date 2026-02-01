@@ -34,8 +34,10 @@ services:
       DB_USERNAME: postgres
       DB_PASSWORD: postgres
       DB_NAME: customer_service_development
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
     depends_on:
       - postgres-customer
+      - rabbitmq
 
   order-service:
     build: ./services/order-service
@@ -49,9 +51,36 @@ services:
       DB_PASSWORD: postgres
       DB_NAME: order_service_development
       CUSTOMER_SERVICE_URL: http://customer-service:3001
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
     depends_on:
       - postgres-order
       - customer-service
+      - rabbitmq
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672" # AMQP
+      - "15672:15672" # UI web
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  customer-consumer:
+    build: ./services/customer-service
+    environment:
+      RAILS_ENV: development
+      DB_HOST: postgres-customer
+      DB_PORT: "5432"
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: customer_service_development
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+    depends_on:
+      - customer-service
+      - rabbitmq
+      - postgres-customer
+    command: ["bin/rails", "consumers:orders_count"]
 
 volumes:
   postgres_order_data:
