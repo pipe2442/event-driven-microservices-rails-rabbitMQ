@@ -1,23 +1,28 @@
 class Api::CustomersController < ApplicationController
   def show
-    customer = Customer.find_by!(public_id: params[:id])
+    @customer = Customer.find_by!(public_id: params[:id])
 
-    render json: {
-      customer_name: customer.name,
-      address: customer.address,
-      orders_count: customer.orders_count
-    }
+    render :show
   end
 
   def index
-    customers = Customer.order(:id).select(:public_id, :name, :address, :orders_count)
-    render json: customers.map { |c|
-      {
-        id: c.public_id,
-        customer_name: c.name,
-        address: c.address,
-        orders_count: c.orders_count
-      }
-    }
+    @customers = Customer.order(:id).select(:public_id, :name, :address, :orders_count)
+    render :index
+  end
+
+  def create
+    @customer = Customer.new(customer_params)
+
+    if @customer.save
+      render :show, status: :created
+    else
+      render json: { errors: @customer.errors.full_messages }, status: :unprocessable_entity
+    end
+  end
+
+  private
+
+  def customer_params
+    params.require(:customer).permit(:name, :address)
   end
 end
