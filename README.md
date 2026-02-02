@@ -49,6 +49,67 @@ docker compose up -d
 
 ---
 
+## Cómo probar la aplicación (end-to-end)
+
+La aplicación ya incluye customers de prueba cargados automáticamente mediante seeds, por lo que no es necesario crear usuarios manualmente.
+
+### 1️⃣ Consultar un customer existente
+```
+GET http://localhost:3001/api/customers/11111111-1111-1111-1111-111111111111
+```
+
+Respuesta esperada:
+```
+{
+  "id": "11111111-1111-1111-1111-111111111111",
+  "name": "John Doe",
+  "email": "john.doe@test.com",
+  "orders_count": 0
+}
+```
+
+Este customer existe porque el customer-service carga datos por defecto en el seed.
+
+### 2️⃣ Crear una orden para ese customer
+```
+POST http://localhost:3000/api/orders
+```
+
+Payload:
+```
+{
+  "order": {
+    "customer_public_id": "11111111-1111-1111-1111-111111111111",
+    "product_name": "Laptop",
+    "quantity": 1,
+    "price": 1200.00,
+    "delivery_address": "Calle 123 #45-67, Medellín"
+  }
+}
+```
+
+Qué ocurre internamente:
+- Se crea la orden en order-service
+- Se publica el evento order.created en RabbitMQ
+- El customer-consumer procesa el evento
+- Se incrementa el orders_count del customer
+
+### 3️⃣ Ver el contador actualizado (event-driven)
+```
+GET http://localhost:3001/api/customers/11111111-1111-1111-1111-111111111111
+```
+
+Respuesta esperada:
+```
+{
+  "id": "11111111-1111-1111-1111-111111111111",
+  "name": "John Doe",
+  "email": "john.doe@test.com",
+  "orders_count": 1
+}
+```
+---
+
 ## Servicios incluidos
 
 - **order-service** (Producer)
