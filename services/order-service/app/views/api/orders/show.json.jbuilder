@@ -8,7 +8,7 @@ json.updated_at @order.updated_at
 
 if @customer
   json.customer do
-    json.id @customer["public_id"]
+    json.id @customer["id"]
     json.name @customer["name"]
     json.address @customer["address"]
   end
