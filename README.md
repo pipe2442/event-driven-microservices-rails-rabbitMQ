@@ -1,10 +1,12 @@
 # Event-Driven Microservices (Rails + RabbitMQ)
 
 <p align="center">
-  <img width="30%" alt="download" src="https://github.com/user-attachments/assets/31135e2d-7edb-4f8e-88ad-c6d46e0d81a0" />
-  <img width="30%" alt="download-2" src="https://github.com/user-attachments/assets/f4590e97-dd13-4872-8a1b-19998404621d" />
-  <img width="30%" alt="download-3" src="https://github.com/user-attachments/assets/109e48b6-e29f-4a40-af60-67b417bfabf4" />
+  <img width="22%" alt="download" src="https://github.com/user-attachments/assets/31135e2d-7edb-4f8e-88ad-c6d46e0d81a0" />
+  <img width="22%" alt="download-2" src="https://github.com/user-attachments/assets/f4590e97-dd13-4872-8a1b-19998404621d" />
+  <img width="22%" alt="download-3" src="https://github.com/user-attachments/assets/109e48b6-e29f-4a40-af60-67b417bfabf4" />
+  <img width="22%" alt="download-4" src="https://github.com/user-attachments/assets/3b0b4f33-d7e3-4663-82e2-8248ef4a296d" />
 </p>
+
 
 ## ¿De qué trata este proyecto?
 
