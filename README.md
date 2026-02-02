@@ -1,11 +1,25 @@
 # Event-Driven Microservices (Rails + RabbitMQ)
 
+## ¿De qué trata este proyecto?
+
+Este proyecto es un ejercicio sencillo que demuestra cómo construir una pequeña arquitectura **event-driven** utilizando **microservicios desarrollados con Ruby on Rails** y manejo de eventos mediante **RabbitMQ**.
+
+La solución se basa en dos microservicios principales: **Orders** y **Customers**.
+
+Ambos servicios se comunican de forma síncrona mediante **peticiones HTTP**, utilizando **HTTParty**.  
+Adicionalmente, al crear una nueva orden, el **Order Service** publica un evento en RabbitMQ, el cual es procesado por un **consumer** que escucha dicho evento y actualiza un campo específico (`orders_count`) en la base de datos del **Customer Service**.
+
+Este enfoque permite separar responsabilidades y manejar actualizaciones de forma asíncrona, siguiendo principios de una arquitectura orientada a eventos.
+
+---
+
 ## Requisitos del sistema
 
 - Docker (>= 20)
 - Docker Compose v2
 
-> No necesitas instalar Ruby, PostgreSQL ni RabbitMQ localmente.
+No es necesario instalar Ruby, PostgreSQL ni RabbitMQ localmente.  
+Por simplicidad, toda la aplicación se encuentra completamente dockerizada.
 
 ---
 
@@ -32,7 +46,8 @@ docker compose up -d
 - **order-service** (Producer)
 - **customer-service** (API)
 - **customer-consumer** (Worker)
-- **postgres-order** y **postgres-customer**
+- **postgres-order**
+- **postgres-customer**
 - **rabbitmq**
 
 ---
