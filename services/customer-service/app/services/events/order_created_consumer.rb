@@ -126,8 +126,8 @@ module Events
         )
         customer.increment!(:orders_count)
       end
-    rescue ActiveRecord::RecordNotUnique
-      puts "[consumer] Event #{event_id} already processed, skipping."
+    rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordInvalid
+      # Idempotent - event already processed
     end
   end
 end

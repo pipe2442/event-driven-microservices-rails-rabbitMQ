@@ -16,6 +16,20 @@ RSpec.describe Events::RabbitmqPublisher do
     order = build(:order)
     described_class.new.publish_order_created(order)
 
-    expect(exchange).to have_received(:publish)
+    expect(exchange).to have_received(:publish) do |payload, options|
+      data = JSON.parse(payload)
+
+      expect(data["event"]).to eq("order.created")
+      expect(data.dig("data", "order_public_id")).to eq(order.public_id)
+      expect(data.dig("data", "customer_public_id")).to eq(order.customer_public_id)
+      expect(data["event_id"]).to be_present
+
+      expect(options).to include(
+        routing_key: "order.created",
+        persistent: true,
+        content_type: "application/json",
+        message_id: data["event_id"]
+      )
+    end
   end
 end
