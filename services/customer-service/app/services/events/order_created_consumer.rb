@@ -7,6 +7,15 @@ module Events
     EXCHANGE_NAME = "orders.events"
     ROUTING_KEY = "order.created"
 
+    DLX_NAME = "orders.dlx"
+    DLQ_NAME = "customer.orders_count.dlq"
+    DLQ_ROUTING_KEY = "order.created.dlq"
+
+    RETRY_EXCHANGE = "orders.retry"
+    RETRY_QUEUE = "customer.orders_count.retry"
+    RETRY_ROUTING_KEY = "order.created.retry"
+    RETRY_TTL_MS = (ENV.fetch("RABBITMQ_RETRY_TTL_MS", "10000").to_i)
+
     def initialize(url: ENV.fetch("RABBITMQ_URL", "amqp://guest:guest@localhost:5672"), customer_repo: Customer)
       @url = url
       @customer_repo = customer_repo
@@ -18,21 +27,66 @@ module Events
       ch.prefetch(10)
 
       exchange = ch.topic(EXCHANGE_NAME, durable: true)
-      queue = ch.queue(QUEUE_NAME, durable: true)
+
+      dlx = ch.topic(DLX_NAME, durable: true)
+      dlq = ch.queue(DLQ_NAME, durable: true)
+      dlq.bind(dlx, routing_key: DLQ_ROUTING_KEY)
+
+      retry_exchange = ch.topic(RETRY_EXCHANGE, durable: true)
+      retry_queue = ch.queue(
+        RETRY_QUEUE,
+        durable: true,
+        arguments: {
+          "x-message-ttl" => RETRY_TTL_MS,
+          "x-dead-letter-exchange" => EXCHANGE_NAME,
+          "x-dead-letter-routing-key" => ROUTING_KEY
+        }
+      )
+      retry_queue.bind(retry_exchange, routing_key: RETRY_ROUTING_KEY)
+
+      queue = ch.queue(
+        QUEUE_NAME,
+        durable: true,
+        arguments: {
+          "x-dead-letter-exchange" => DLX_NAME,
+          "x-dead-letter-routing-key" => DLQ_ROUTING_KEY
+        }
+      )
       queue.bind(exchange, routing_key: ROUTING_KEY)
 
       puts "[consumer] Listening on #{QUEUE_NAME} (#{ROUTING_KEY})..."
 
-      queue.subscribe(manual_ack: true, block: true) do |delivery_info, _props, body|
+      queue.subscribe(manual_ack: true, block: true) do |delivery_info, props, body|
         handle_message(body)
         ch.ack(delivery_info.delivery_tag)
       rescue => e
         puts "[consumer] Error: #{e.message}"
-        ch.nack(delivery_info.delivery_tag, false, true)
+        retries = retry_count(props)
+        max_retries = ENV.fetch("RABBITMQ_MAX_RETRIES", "3").to_i
+
+        if retries >= max_retries
+          ch.nack(delivery_info.delivery_tag, false, false)
+        else
+          retry_exchange.publish(
+            body,
+            routing_key: RETRY_ROUTING_KEY,
+            persistent: true,
+            content_type: props.content_type,
+            message_id: props.message_id,
+            headers: props.headers
+          )
+          ch.ack(delivery_info.delivery_tag)
+        end
       end
     end
 
     private
+
+    def retry_count(props)
+      deaths = Array(props.headers && props.headers["x-death"])
+      entry = deaths.find { |d| d["queue"] == QUEUE_NAME }
+      (entry && entry["count"] || 0).to_i
+    end
 
     def connect
       retries = 0
