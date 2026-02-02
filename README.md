@@ -1,5 +1,11 @@
 # Event-Driven Microservices (Rails + RabbitMQ)
 
+<p align="center">
+  <img width="30%" alt="download" src="https://github.com/user-attachments/assets/31135e2d-7edb-4f8e-88ad-c6d46e0d81a0" />
+  <img width="30%" alt="download-2" src="https://github.com/user-attachments/assets/f4590e97-dd13-4872-8a1b-19998404621d" />
+  <img width="30%" alt="download-3" src="https://github.com/user-attachments/assets/109e48b6-e29f-4a40-af60-67b417bfabf4" />
+</p>
+
 ## ¿De qué trata este proyecto?
 
 Este proyecto es un ejercicio sencillo que demuestra cómo construir una pequeña arquitectura **event-driven** utilizando **microservicios desarrollados con Ruby on Rails** y manejo de eventos mediante **RabbitMQ**.
