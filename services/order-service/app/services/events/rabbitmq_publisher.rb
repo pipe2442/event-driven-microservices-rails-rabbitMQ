@@ -1,5 +1,6 @@
 require "bunny"
 require "json"
+require "securerandom"
 
 module Events
   class RabbitmqPublisher
@@ -11,6 +12,7 @@ module Events
 
     def publish_order_created(order)
       payload = {
+        event_id: SecureRandom.uuid,
         event: "order.created",
         occurred_at: Time.now.utc.iso8601,
         data: {
@@ -35,7 +37,8 @@ module Events
         JSON.generate(payload),
         routing_key: routing_key,
         persistent: true,
-        content_type: "application/json"
+        content_type: "application/json",
+        message_id: payload[:event_id]
       )
     ensure
       conn&.close

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_01_012851) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_02_003658) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -24,5 +24,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_01_012851) do
     t.datetime "updated_at", null: false
     t.index ["name"], name: "index_customers_on_name"
     t.index ["public_id"], name: "index_customers_on_public_id", unique: true
+  end
+
+  create_table "processed_events", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "event_id", null: false
+    t.string "event_name", null: false
+    t.datetime "occurred_at"
+    t.datetime "updated_at", null: false
+    t.index ["event_id"], name: "index_processed_events_on_event_id", unique: true
   end
 end

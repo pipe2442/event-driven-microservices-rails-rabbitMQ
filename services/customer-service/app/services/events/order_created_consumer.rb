@@ -47,7 +47,7 @@ module Events
           retries += 1
           raise "RabbitMQ unavailable after #{max_retries} retries" if retries >= max_retries
 
-          sleep_time = [retries, 5].min
+          sleep_time = [ retries, 5 ].min
           puts "[consumer] RabbitMQ not ready, retrying in #{sleep_time}s..."
           sleep sleep_time
         end
@@ -56,13 +56,24 @@ module Events
 
     def handle_message(body)
       msg = JSON.parse(body)
+      event_id = msg["event_id"]
+      event_name = msg["event"]
       customer_public_id = msg.dig("data", "customer_public_id")
-      return if customer_public_id.nil?
+      return if event_id.nil? || customer_public_id.nil?
 
       customer = @customer_repo.find_by(public_id: customer_public_id)
       return if customer.nil?
 
-      customer.increment!(:orders_count)
+      ApplicationRecord.transaction do
+        ProcessedEvent.create!(
+          event_id: event_id,
+          event_name: event_name,
+          occurred_at: msg["occurred_at"]
+        )
+        customer.increment!(:orders_count)
+      end
+    rescue ActiveRecord::RecordNotUnique
+      puts "[consumer] Event #{event_id} already processed, skipping."
     end
   end
 end
