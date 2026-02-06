@@ -7,41 +7,37 @@
   <img width="22%" alt="download-4" src="https://github.com/user-attachments/assets/3b0b4f33-d7e3-4663-82e2-8248ef4a296d" />
 </p>
 
+## What is this project about?
 
-## ¿De qué trata este proyecto?
+This project is a simple exercise that demonstrates how to build a small **event-driven architecture** using **microservices developed with Ruby on Rails** and event handling through **RabbitMQ**.
 
-Este proyecto es un ejercicio sencillo que demuestra cómo construir una pequeña arquitectura **event-driven** utilizando **microservicios desarrollados con Ruby on Rails** y manejo de eventos mediante **RabbitMQ**.
+The solution is based on two main microservices: **Orders** and **Customers**.
 
-La solución se basa en dos microservicios principales: **Orders** y **Customers**.
+Both services communicate synchronously via **HTTP requests**, using **HTTParty**.  
+Additionally, when a new order is created, the **Order Service** publishes an event to RabbitMQ, which is processed by a **consumer** that listens to the event and updates a specific field (`orders_count`) in the **Customer Service** database.
 
-Ambos servicios se comunican de forma síncrona mediante **peticiones HTTP**, utilizando **HTTParty**.  
-Adicionalmente, al crear una nueva orden, el **Order Service** publica un evento en RabbitMQ, el cual es procesado por un **consumer** que escucha dicho evento y actualiza un campo específico (`orders_count`) en la base de datos del **Customer Service**.
+This approach allows responsibilities to be separated and updates to be handled asynchronously, following event-driven architecture principles.
 
-Este enfoque permite separar responsabilidades y manejar actualizaciones de forma asíncrona, siguiendo principios de una arquitectura orientada a eventos.
-
----
-
-## Requisitos del sistema
+## System Requirements
 
 - Docker (>= 20)
 - Docker Compose v2
 
-No es necesario instalar Ruby, PostgreSQL ni RabbitMQ localmente.  
-Por simplicidad, toda la aplicación se encuentra completamente dockerizada.
+There is no need to install Ruby, PostgreSQL, or RabbitMQ locally.  
+For simplicity, the entire application is fully dockerized.
 
----
+## Running the project with Docker
 
-## Levantar el proyecto con Docker
+From the root of the repository:
 
-Desde la raíz del repositorio:
 
-```bash
+```
 docker compose up -d --build
 ```
 
-Si quieres reconstruir desde cero:
+To rebuild everything from scratch:
 
-```bash
+```
 docker compose down -v
 docker compose build --no-cache
 docker compose up -d
@@ -49,16 +45,16 @@ docker compose up -d
 
 ---
 
-## Cómo probar la aplicación (end-to-end)
+How to test the application (end-to-end)
 
-La aplicación ya incluye customers de prueba cargados automáticamente mediante seeds, por lo que no es necesario crear usuarios manualmente.
+The application already includes test customers automatically loaded via seeds, so there is no need to create users manually.
 
-### 1️⃣ Consultar un customer existente
+### 1. Fetch an existing customer
 ```
 GET http://localhost:3001/api/customers/11111111-1111-1111-1111-111111111111
 ```
 
-Respuesta esperada:
+Expected response:
 ```
 {
   "id": "11111111-1111-1111-1111-111111111111",
@@ -68,9 +64,9 @@ Respuesta esperada:
 }
 ```
 
-Este customer existe porque el customer-service carga datos por defecto en el seed.
+This customer exists because the customer-service loads default data through seeds.
 
-### 2️⃣ Crear una orden para ese customer
+### 2. Create an order for that customer
 ```
 POST http://localhost:3000/api/orders
 ```
@@ -88,18 +84,19 @@ Payload:
 }
 ```
 
-Qué ocurre internamente:
-- Se crea la orden en order-service
-- Se publica el evento order.created en RabbitMQ
-- El customer-consumer procesa el evento
-- Se incrementa el orders_count del customer
+What happens internally:
 
-### 3️⃣ Ver el contador actualizado (event-driven)
+- The order is created in the order-service
+- The order.created event is published to RabbitMQ
+- The customer-consumer processes the event
+- The customer's orders_count is incremented
+
+### 3. Verify the updated counter (event-driven)
 ```
 GET http://localhost:3001/api/customers/11111111-1111-1111-1111-111111111111
 ```
 
-Respuesta esperada:
+Expected response:
 ```
 {
   "id": "11111111-1111-1111-1111-111111111111",
@@ -110,9 +107,9 @@ Respuesta esperada:
 ```
 ---
 
-## Servicios incluidos
+## Included Services
 
-- **order-service** (Producer)
+- **order-service (Producer)
 - **customer-service** (API)
 - **customer-consumer** (Worker)
 - **postgres-order**
@@ -121,65 +118,65 @@ Respuesta esperada:
 
 ---
 
-## Arquitectura (event-driven)
+## Architecture (event-driven)
 
 <img width="1214" height="710" alt="Screenshot 2026-02-01 at 10 25 31 PM" src="https://github.com/user-attachments/assets/63d351c7-989a-4f02-bdf3-1fa03b022560" />
 
-- **order-service** publica eventos en RabbitMQ cuando se crea una orden.
-- **customer-consumer** consume esos eventos para actualizar datos (ej: `orders_count`).
-- RabbitMQ usa un **exchange topic** (`orders.events`) con la routing key `order.created`.
+- order-service publishes events to RabbitMQ when an order is created.
+- customer-consumer consumes those events to update data (e.g. orders_count).
+- RabbitMQ uses a topic exchange (orders.events) with the routing key order.created.
 
 **Flujo:**
 
-1. `order-service` crea una orden.
-2. Publica `order.created` con `event_id`.
-3. `customer-consumer` escucha el evento.
-4. Registra el `event_id` y actualiza el cliente.
-5. Si llega un duplicado, se ignora (idempotencia).
+1. order-service creates an order.
+2. Publishes order.created with an event_id.
+3. customer-consumer listens to the event.
+4. Stores the event_id and updates the customer.
+5. If a duplicate event arrives, it is ignored (idempotency).
 
 ---
 
-## Decisiones de diseño
+## Design Decisions
 
-- El mismo código base del **Customer Service** se utiliza tanto para la API como para el worker, en contenedores separados con responsabilidades distintas.
-- RabbitMQ entrega mensajes **at-least-once**, por lo que el consumer es **idempotente** (deduplicación por `event_id`).
-- Los mensajes que fallan se reintentan con **TTL** y, al superar `RABBITMQ_MAX_RETRIES`, se envían a la **DLQ** (`customer.orders_count.dlq`).
-
----
-
-## Acceder a RabbitMQ
-
-- Management UI: http://localhost:15672  
-- Usuario: `guest` / Password: `guest`
+- The same Customer Service codebase is used for both the API and the worker, running in separate containers with different responsibilities.
+- RabbitMQ delivers messages at-least-once, so the consumer is idempotent (deduplication by event_id).
+- Failed messages are retried using TTL and, after exceeding RABBITMQ_MAX_RETRIES, are sent to the DLQ (customer.orders_count.dlq).
 
 ---
 
-## Comandos útiles
+## Access RabbitMQ
 
-Consola Rails dentro de contenedor:
+- Management UI: http://localhost:15672
+- User: `guest` / Password: `guest`
 
-```bash
+---
+
+## Useful Commands
+
+Rails console inside a container:
+
+```
 docker compose exec order-service bin/rails c
 ```
 
-o
+or
 
-```bash
+```
 docker compose exec customer-service bin/rails c
 ```
 
-Migraciones:
+Run migrations:
 
-```bash
+```
 docker compose exec customer-service bin/rails db:migrate
 ```
-```bash
+```
 docker compose exec order-service bin/rails db:migrate
 ```
 
 ---
 
-## Puertos
+## Ports
 
 - order-service: `http://localhost:3000`
 - customer-service: `http://localhost:3001`
